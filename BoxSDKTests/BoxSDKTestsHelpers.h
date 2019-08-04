@@ -22,7 +22,7 @@
 @property (nonatomic, readonly, strong) id mockObject;
 
 // define all of the public methods that OCMockObject does
-// @see <OCMock/OCMockObject.h>
+// @see <OCMock/OCMockObject.h"
 + (id)mockForClass:(Class)aClass;
 + (id)mockForProtocol:(Protocol *)aProtocol;
 + (id)partialMockForObject:(NSObject *)anObject;

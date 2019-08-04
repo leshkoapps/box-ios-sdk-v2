@@ -9,8 +9,8 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 
-#import <BoxSDK/BoxItemPickerTableViewController.h>
-#import <BoxSDK/BoxAuthorizationViewController.h>
+#import "BoxItemPickerTableViewController.h"
+#import "BoxAuthorizationViewController.h"
 
 typedef NS_ENUM(NSUInteger, BoxItemPickerObjectType) {
     BoxItemPickerObjectTypeFile,

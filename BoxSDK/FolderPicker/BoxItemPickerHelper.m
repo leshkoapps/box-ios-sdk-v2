@@ -6,10 +6,10 @@
 //  Copyright (c) 2013 Box Inc. All rights reserved.
 //
 
-#import <BoxSDK/BoxItemPickerHelper.h>
-#import <BoxSDK/BoxSDK.h>
-#import <BoxSDK/BoxLog.h>
-#import <BoxSDK/BoxItem+BoxAdditions.h>
+#import "BoxItemPickerHelper.h"
+#import "BoxSDK.h"
+#import "BoxLog.h"
+#import "BoxItem+BoxAdditions.h"
 
 #define B0X_FAILED_OPERATION_MODEL (@"failedOperationModel")
 #define B0X_FAILED_OPERATION_REFRESHED_BLOCK (@"failedOperationRefreshedBlock")

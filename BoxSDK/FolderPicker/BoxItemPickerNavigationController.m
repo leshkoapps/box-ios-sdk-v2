@@ -6,7 +6,7 @@
 //  Copyright (c) 2013 Box. All rights reserved.
 //
 
-#import <BoxSDK/BoxItemPickerNavigationController.h>
+#import "BoxItemPickerNavigationController.h"
 
 @implementation BoxItemPickerNavigationController
 

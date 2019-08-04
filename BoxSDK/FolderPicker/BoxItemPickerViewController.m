@@ -6,12 +6,12 @@
 //  Copyright (c) 2013 Box Inc. All rights reserved.
 //
 
-#import <BoxSDK/UIImage+BoxAdditions.h>
-#import <BoxSDK/NSString+BoxAdditions.h>
+#import "UIImage+BoxAdditions.h"
+#import "NSString+BoxAdditions.h"
 
-#import <BoxSDK/BoxItemPickerViewController.h>
-#import <BoxSDK/BoxSDK.h>
-#import <BoxSDK/BoxLog.h>
+#import "BoxItemPickerViewController.h"
+#import "BoxSDK.h"
+#import "BoxLog.h"
 
 #define kStrechWidthOffset 9.0
 #define kStrechHeightOffset 16.0
