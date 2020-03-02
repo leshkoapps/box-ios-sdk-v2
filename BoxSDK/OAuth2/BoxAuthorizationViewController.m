@@ -192,6 +192,7 @@
 		if(decisionHandler){
             decisionHandler(WKNavigationActionPolicyCancel);
         }
+        return;
 	}
 
 	[self.delegate authorizationViewControllerDidStartLoading:self];
@@ -212,17 +213,12 @@
 	{
 		if ([self.delegate respondsToSelector:@selector(authorizationViewController:shouldLoadReceivedOAuth2RedirectRequest:)])
 		{
-			BOOL result = [self.delegate authorizationViewController:self shouldLoadReceivedOAuth2RedirectRequest:request];
-            if(result){
-                if(decisionHandler){
-                    decisionHandler(WKNavigationActionPolicyAllow);
-                }
+            BOOL result = [self.delegate authorizationViewController:self shouldLoadReceivedOAuth2RedirectRequest:request];
+            WKNavigationActionPolicy actionPolicy = result?WKNavigationActionPolicyAllow:WKNavigationActionPolicyCancel;
+            if(decisionHandler){
+                decisionHandler(actionPolicy);
             }
-            else{
-                if(decisionHandler){
-                    decisionHandler(WKNavigationActionPolicyCancel);
-                }
-            }
+            return;
 		}
 	}
 	else if (self.connectionIsTrusted == NO)
@@ -233,6 +229,7 @@
 		if(decisionHandler){
             decisionHandler(WKNavigationActionPolicyCancel);
         }
+        return;
 	}
 
 	if(decisionHandler){
