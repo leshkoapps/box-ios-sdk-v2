@@ -11,6 +11,7 @@
 		9400B0BC17FB8BE00077D4E7 /* BoxUsersRequestBuilder.m in Sources */ = {isa = PBXBuildFile; fileRef = 9400B0BA17FB8BE00077D4E7 /* BoxUsersRequestBuilder.m */; };
 		9400B0BF17FB8BEA0077D4E7 /* BoxUsersResourceManager.h in Headers */ = {isa = PBXBuildFile; fileRef = 9400B0BD17FB8BEA0077D4E7 /* BoxUsersResourceManager.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		9400B0C017FB8BEA0077D4E7 /* BoxUsersResourceManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 9400B0BE17FB8BEA0077D4E7 /* BoxUsersResourceManager.m */; };
+		ACE3DD3A240D006C00AA0392 /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ACE3DD39240D006C00AA0392 /* WebKit.framework */; };
 		AF153B1317C346D6008D636C /* NSJSONSerialization+BoxAdditions.h in Headers */ = {isa = PBXBuildFile; fileRef = AF153B1117C346D6008D636C /* NSJSONSerialization+BoxAdditions.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		AF153B1417C346D6008D636C /* NSJSONSerialization+BoxAdditions.m in Sources */ = {isa = PBXBuildFile; fileRef = AF153B1217C346D6008D636C /* NSJSONSerialization+BoxAdditions.m */; };
 		AF6534B217CF27DB00C27DFD /* NSJSONSerialization+BoxAdditions.m in Sources */ = {isa = PBXBuildFile; fileRef = AF153B1217C346D6008D636C /* NSJSONSerialization+BoxAdditions.m */; };
@@ -437,6 +438,7 @@
 		9400B0C517FB8C600077D4E7 /* BoxUserTests.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = BoxUserTests.m; sourceTree = "<group>"; };
 		9400B0C717FB8C6F0077D4E7 /* BoxUsersResourceManagerTests.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = BoxUsersResourceManagerTests.m; sourceTree = "<group>"; };
 		9400B0C817FB8C6F0077D4E7 /* BoxUsersResourceManagerTests.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BoxUsersResourceManagerTests.h; sourceTree = "<group>"; };
+		ACE3DD39240D006C00AA0392 /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.15.sdk/System/Library/Frameworks/WebKit.framework; sourceTree = DEVELOPER_DIR; };
 		AF153B1117C346D6008D636C /* NSJSONSerialization+BoxAdditions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSJSONSerialization+BoxAdditions.h"; sourceTree = "<group>"; };
 		AF153B1217C346D6008D636C /* NSJSONSerialization+BoxAdditions.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSJSONSerialization+BoxAdditions.m"; sourceTree = "<group>"; };
 		AF153B1517C34D84008D636C /* NSJSONSerialization+BoxAdditionsTests.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSJSONSerialization+BoxAdditionsTests.h"; sourceTree = "<group>"; };
@@ -832,6 +834,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				ACE3DD3A240D006C00AA0392 /* WebKit.framework in Frameworks */,
 				E40C7A49174BFDB500477760 /* Security.framework in Frameworks */,
 				C54BBF701758539E00F5DAD8 /* QuartzCore.framework in Frameworks */,
 				E4FADA2B172CE35F0052AD11 /* UIKit.framework in Frameworks */,
@@ -1118,6 +1121,7 @@
 		E470433D16D41DC500FED29A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				ACE3DD39240D006C00AA0392 /* WebKit.framework */,
 				F05F80E817B3FD9C001182FB /* OSX */,
 				F05F80E717B3FD8C001182FB /* iOS */,
 				E470434D16D41DC500FED29A /* SenTestingKit.framework */,
@@ -1718,6 +1722,7 @@
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
 			knownRegions = (
+				English,
 				en,
 			);
 			mainGroup = E470433216D41DC500FED29A;

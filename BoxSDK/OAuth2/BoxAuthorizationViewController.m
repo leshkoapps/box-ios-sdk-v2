@@ -8,12 +8,14 @@
 
 #import "BoxAuthorizationViewController.h"
 #import "BoxLog.h"
+#import <WebKit/WebKit.h>
 
 #define BOX_SSO_SERVER_TRUST_ALERT_TAG (1)
 #define BOX_SSO_CREDENTIALS_ALERT_TAG (2)
 
-@interface BoxAuthorizationViewController ()
+@interface BoxAuthorizationViewController ()<WKUIDelegate,WKNavigationDelegate>
 
+@property (nonatomic, readwrite, strong) WKWebView *webView;
 @property (nonatomic, readwrite, strong) NSURL *authorizationURL;
 @property (nonatomic, readwrite, strong) NSString *redirectURIString;
 @property (nonatomic, readwrite, strong) NSURLConnection *connection;
@@ -75,14 +77,32 @@
 
 - (void)loadView
 {
-	[[NSHTTPCookieStorage sharedHTTPCookieStorage] setCookieAcceptPolicy:NSHTTPCookieAcceptPolicyAlways];
+    [super loadView];
+    
+    [[NSHTTPCookieStorage sharedHTTPCookieStorage] setCookieAcceptPolicy:NSHTTPCookieAcceptPolicyAlways];
+}
 
-	UIWebView *webView = [[UIWebView alloc] init];
-	[webView setScalesPageToFit:YES];
-	webView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-	webView.delegate = self;
-
-	self.view = webView;
+- (void)viewDidLoad
+{
+    [super viewDidLoad];
+    
+    WKWebViewConfiguration *theConfiguration = [WKWebViewConfiguration new];
+    @try{if (NSFoundationVersionNumber >= NSFoundationVersionNumber_iOS_9_0) {
+        theConfiguration.websiteDataStore = [WKWebsiteDataStore nonPersistentDataStore];
+    }} @catch(NSException *exc){}
+    
+    NSString *scalePageToFitScript = @"var meta = document.createElement('meta'); meta.setAttribute('name', 'viewport'); meta.setAttribute('content', 'width=device-width'); document.getElementsByTagName('head')[0].appendChild(meta);";
+    WKUserScript *wkUScript = [[WKUserScript alloc] initWithSource:scalePageToFitScript injectionTime:WKUserScriptInjectionTimeAtDocumentEnd forMainFrameOnly:YES];
+    WKUserContentController *wkUController = [[WKUserContentController alloc] init];
+    [wkUController addUserScript:wkUScript];
+    theConfiguration.userContentController = wkUController;
+    
+    WKWebView *webView = [[WKWebView alloc] initWithFrame:self.view.bounds configuration:theConfiguration];
+    webView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    webView.navigationDelegate = self;
+    webView.UIDelegate = self;
+    [self.view addSubview:webView];
+    self.webView = webView;
 }
 
 - (void)viewWillAppear:(BOOL)animated
@@ -91,16 +111,14 @@
 	if (self.hasLoadedLoginPage == NO)
 	{
 		NSURLRequest *request = [[NSURLRequest alloc] initWithURL:self.authorizationURL];
-		UIWebView *webView = (UIWebView *)self.view;
-		[webView loadRequest:request];
+		[self.webView loadRequest:request];
 	}
 }
 
 - (void)viewWillDisappear:(BOOL)animated
 {
     [super viewWillDisappear:animated];
-	UIWebView *webView = (UIWebView *)self.view;
-	[webView stopLoading];
+	[self.webView stopLoading];
 	[self.connection cancel];
 }
 
@@ -129,13 +147,15 @@
 	else
 	{
 		BOXLog(@"Do not trust the host. Presenting an error to the user.");
-		UIAlertView *loginFailureAlertView = [[UIAlertView alloc] initWithTitle:NSLocalizedString(@"Login failure", @"Alert view title: Title for failed SSO login due to authentication issue")
-																		message:NSLocalizedString(@"Could not complete login because the SSO server is untrusted. Please contact your administrator for more information.", @"Alert view message: message for failed SSO login due to untrusted (for example: self signed) certificate")
-																	   delegate:nil
-															  cancelButtonTitle:NSLocalizedString(@"OK", @"Button title: Dismiss the alert view")
-															  otherButtonTitles:nil];
-
-		[loginFailureAlertView show];
+        UIAlertController  *loginFailureAlertController =
+        [UIAlertController alertControllerWithTitle:NSLocalizedString(@"Login failure", @"Alert view title: Title for failed SSO login due to authentication issue")
+                                            message:NSLocalizedString(@"Could not complete login because the SSO server is untrusted. Please contact your administrator for more information.", @"Alert view message: message for failed SSO login due to untrusted (for example: self signed) certificate")
+                                     preferredStyle:UIAlertControllerStyleAlert];
+        
+        UIAlertAction *loginFailureAlertControllerCancelAction = [UIAlertAction actionWithTitle:NSLocalizedString(@"OK", @"Button title: Dismiss the alert view") style:UIAlertActionStyleCancel handler:nil];
+        [loginFailureAlertController addAction:loginFailureAlertControllerCancelAction];
+        
+        [self presentViewController:loginFailureAlertController animated:YES completion:nil];
 	}
 }
 
@@ -154,10 +174,12 @@
 	}
 }
 
-#pragma mark - UIWebViewDelegate methods
+#pragma mark - WKWebViewDelegate methods
 
-- (BOOL)webView:(UIWebView *)webView shouldStartLoadWithRequest:(NSURLRequest *)request navigationType:(UIWebViewNavigationType)navigationType
-{
+- (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler {
+
+    NSURLRequest *request = navigationAction.request;
+    WKNavigationType navigationType = navigationAction.navigationType;
 	BOXLog(@"Web view should start request %@ with navigation type %ld", request, (long)navigationType);
 	BOXLog(@"Request Headers \n%@", [request allHTTPHeaderFields]);
 
@@ -168,7 +190,9 @@
 	// generally protect against loading about:blank.
 	if ([request.URL isEqual:[NSURL URLWithString:@"about:blank"]])
 	{
-		return NO;
+		if(decisionHandler){
+            decisionHandler(WKNavigationActionPolicyCancel);
+        }
 	}
 
 	[self.delegate authorizationViewControllerDidStartLoading:self];
@@ -189,7 +213,17 @@
 	{
 		if ([self.delegate respondsToSelector:@selector(authorizationViewController:shouldLoadReceivedOAuth2RedirectRequest:)])
 		{
-			return [self.delegate authorizationViewController:self shouldLoadReceivedOAuth2RedirectRequest:request];
+			BOOL result = [self.delegate authorizationViewController:self shouldLoadReceivedOAuth2RedirectRequest:request];
+            if(result){
+                if(decisionHandler){
+                    decisionHandler(WKNavigationActionPolicyAllow);
+                }
+            }
+            else{
+                if(decisionHandler){
+                    decisionHandler(WKNavigationActionPolicyCancel);
+                }
+            }
 		}
 	}
 	else if (self.connectionIsTrusted == NO)
@@ -197,18 +231,22 @@
 		BOXLog(@"Was not authenticated, launching URLConnection and not loading the request in the web view");
 		self.connection = [[NSURLConnection alloc] initWithRequest:request delegate:self];
 		BOXLog(@"URLConnection is %@", self.connection);
-		return NO;
+		if(decisionHandler){
+            decisionHandler(WKNavigationActionPolicyCancel);
+        }
 	}
 
-	return YES;
+	if(decisionHandler){
+        decisionHandler(WKNavigationActionPolicyAllow);
+    }
 }
 
-- (void)webViewDidStartLoad:(UIWebView *)webView
+- (void)webView:(WKWebView *)webView didStartProvisionalNavigation:(null_unspecified WKNavigation *)navigation
 {
 	BOXLogFunction();
 }
 
-- (void)webView:(UIWebView *)webView didFailLoadWithError:(NSError *)error
+- (void)webView:(WKWebView *)webView didFailNavigation:(null_unspecified WKNavigation *)navigation withError:(NSError *)error
 {
 	BOXLog(@"Web view %@ did fail load with error %@", webView, error);
 
@@ -245,9 +283,9 @@
 		}
 		
 		BOXLog(@"Checking if error is due to an iframe request.");
-		BOXLog(@"Request URL is %@ while main document URL is %@", requestURLString, [webView.request mainDocumentURL]);
+		BOXLog(@"Request URL is %@ while main document URL is %@", requestURLString, self.authorizationURL);
 		
-		BOOL isMainDocumentURL = [requestURLString isEqualToString:[[webView.request mainDocumentURL] absoluteString]];
+		BOOL isMainDocumentURL = [requestURLString isEqualToString:[self.authorizationURL absoluteString]];
 		if (isMainDocumentURL == NO)
 		{
 			// If the failing URL is not the main document URL, then the load error is in an iframe and can be ignored
@@ -265,7 +303,7 @@
 	}
 }
 
-- (void)webViewDidFinishLoad:(UIWebView *)webView
+- (void)webView:(WKWebView *)webView didFinishNavigation:(null_unspecified WKNavigation *)navigation
 {
 	BOXLogFunction();
 	[self.delegate authorizationViewControllerDidFinishLoading:self];
@@ -330,13 +368,39 @@
 		if (requestUserConfirmation)
 		{
 			self.authenticationChallenge = challenge;
-			UIAlertView *serverTrustAlertView = [[UIAlertView alloc] initWithTitle:NSLocalizedString(@"Cannot Verify Server Identity", @"Alert view title: title for SSO server trust challenge")
-																		   message:[NSString stringWithFormat:NSLocalizedString(@"Box cannot verify the identity of \"%@\". Would you like to continue anyway?", @"Alert view message: Message for SSO server trust challenge, giving the user the host of the server who's identity cannot be verified."), [[challenge protectionSpace] host]]
-																		  delegate:self
-																 cancelButtonTitle:NSLocalizedString(@"Cancel", @"Button title: cancel action")
-																 otherButtonTitles:NSLocalizedString(@"Continue", @"Alert view button: button title for when the user would like to continue with their action"), nil];
-			serverTrustAlertView.tag = BOX_SSO_SERVER_TRUST_ALERT_TAG;
-			[serverTrustAlertView show];
+            
+            UIAlertController  *serverTrustAlertController =
+            [UIAlertController alertControllerWithTitle:NSLocalizedString(@"Cannot Verify Server Identity", @"Alert view title: title for SSO server trust challenge")
+                                                message:[NSString stringWithFormat:NSLocalizedString(@"Box cannot verify the identity of \"%@\". Would you like to continue anyway?", @"Alert view message: Message for SSO server trust challenge, giving the user the host of the server who's identity cannot be verified."), [[challenge protectionSpace] host]]
+                                         preferredStyle:UIAlertControllerStyleAlert];
+            
+            __weak typeof (self) weakSelf = self;
+            __weak typeof (serverTrustAlertController) weakAlertController = serverTrustAlertController;
+            
+            UIAlertAction *serverTrustAlertControllerCancelAction =
+            [UIAlertAction actionWithTitle:NSLocalizedString(@"Cancel", @"Button title: cancel action")
+                                     style:UIAlertActionStyleCancel
+                                   handler:^(UIAlertAction * _Nonnull action)
+             {
+                [weakSelf alertController:weakAlertController
+                                  withTag:BOX_SSO_SERVER_TRUST_ALERT_TAG
+                            clickedAction:action];
+            }];
+            [serverTrustAlertController addAction:serverTrustAlertControllerCancelAction];
+            
+            UIAlertAction *serverTrustAlertControllerContinueAction =
+            [UIAlertAction actionWithTitle:NSLocalizedString(@"Continue", @"Alert view button: button title for when the user would like to continue with their action")
+                                     style:UIAlertActionStyleDefault
+                                   handler:^(UIAlertAction * _Nonnull action)
+             {
+                [weakSelf alertController:weakAlertController
+                                  withTag:BOX_SSO_SERVER_TRUST_ALERT_TAG
+                            clickedAction:action];
+            }];
+            [serverTrustAlertController addAction:serverTrustAlertControllerContinueAction];
+            
+            [self presentViewController:serverTrustAlertController animated:YES completion:nil];
+
 		}
 		else
 		{
@@ -359,13 +423,20 @@
 			self.connection = nil;
 			self.connectionIsTrusted = NO;
 
-			UIAlertView *loginFailureAlertView = [[UIAlertView alloc] initWithTitle:NSLocalizedString(@"Login failure", @"Alert view title: Title for failed SSO login due to authentication issue")
-																			message:NSLocalizedString(@"Could not sign in. Please check your network connection and try again.", @"Alert view message: message for failed SSO login due bad username or password")
-																		   delegate:nil
-																  cancelButtonTitle:NSLocalizedString(@"OK", @"Button title: Dismiss the alert view")
-																  otherButtonTitles:nil];
-			BOXLog(@"Returning due to bad password");
-			[loginFailureAlertView show];
+            UIAlertController  *loginFailureAlertController =
+            [UIAlertController alertControllerWithTitle:NSLocalizedString(@"Login failure", @"Alert view title: Title for failed SSO login due to authentication issue")
+                                                message:NSLocalizedString(@"Could not sign in. Please check your network connection and try again.", @"Alert view message: message for failed SSO login due bad username or password")
+                                         preferredStyle:UIAlertControllerStyleAlert];
+            
+            UIAlertAction *loginFailureAlertControllerCancelAction =
+            [UIAlertAction actionWithTitle:NSLocalizedString(@"OK", @"Button title: Dismiss the alert view")
+                                     style:UIAlertActionStyleCancel
+                                   handler:nil];
+            [loginFailureAlertController addAction:loginFailureAlertControllerCancelAction];
+            
+            BOXLog(@"Returning due to bad password");
+            [self presentViewController:loginFailureAlertController animated:YES completion:nil];
+
 		}
 		else
 		{
@@ -382,17 +453,49 @@
 
 				self.authenticationChallenge = challenge;
 
-				// Create the alert view
-				UIAlertView *challengeAlertView = [[UIAlertView alloc] initWithTitle:NSLocalizedString(@"This page requires you to log in", @"Alert view title: title for SSO authentication challenge")
-																			 message:nil
-																			delegate:self
-																   cancelButtonTitle:NSLocalizedString(@"Cancel", @"Button title: cancel action")
-																   otherButtonTitles:NSLocalizedString(@"Submit", @"Alert view button: submit button for SSO authentication challenge"), nil];
-				challengeAlertView.tag = BOX_SSO_CREDENTIALS_ALERT_TAG;
-				challengeAlertView.alertViewStyle = UIAlertViewStyleLoginAndPasswordInput;
-				// Change the login text field's placeholder text to Username (it defaults to Login).
-				[[challengeAlertView textFieldAtIndex:0] setPlaceholder:NSLocalizedString(@"Username", @"Alert view text placeholder: Placeholder for where to enter user name for SSO authentication challenge")];
-				[challengeAlertView show];
+				// Create the alert controller
+                
+                UIAlertController  *challengeAlertController =
+                [UIAlertController alertControllerWithTitle:NSLocalizedString(@"This page requires you to log in", @"Alert view title: title for SSO authentication challenge")
+                                                    message:nil
+                                             preferredStyle:UIAlertControllerStyleAlert];
+                
+                __weak typeof (self) weakSelf = self;
+                __weak typeof (challengeAlertController) weakAlertController = challengeAlertController;
+                
+                UIAlertAction *cancelAction =
+                [UIAlertAction actionWithTitle:NSLocalizedString(@"Cancel", @"Button title: cancel action")
+                                         style:UIAlertActionStyleCancel
+                                       handler:^(UIAlertAction * _Nonnull action)
+                 {
+                    [weakSelf alertController:weakAlertController
+                                      withTag:BOX_SSO_CREDENTIALS_ALERT_TAG
+                                clickedAction:action];
+                }];
+                [challengeAlertController addAction:cancelAction];
+                
+                UIAlertAction *submitAction =
+                [UIAlertAction actionWithTitle:NSLocalizedString(@"Submit", @"Alert view button: submit button for SSO authentication challenge")
+                                         style:UIAlertActionStyleDefault
+                                       handler:^(UIAlertAction * _Nonnull action)
+                 {
+                    [weakSelf alertController:weakAlertController
+                                      withTag:BOX_SSO_CREDENTIALS_ALERT_TAG
+                                clickedAction:action];
+                }];
+                [challengeAlertController addAction:submitAction];
+                
+                [challengeAlertController addTextFieldWithConfigurationHandler:^(UITextField * _Nonnull textField) {
+                    // Change the login text field's placeholder text to Username (it defaults to Login).
+                    [textField setPlaceholder:NSLocalizedString(@"Username", @"Alert view text placeholder: Placeholder for where to enter user name for SSO authentication challenge")];
+                }];
+                
+                [challengeAlertController addTextFieldWithConfigurationHandler:^(UITextField * _Nonnull textField) {
+                    [textField setSecureTextEntry:YES];
+                }];
+                
+                [self presentViewController:challengeAlertController animated:YES completion:nil];
+
 			}
 		}
 	}
@@ -406,13 +509,19 @@
 		self.connection = nil;
 		self.connectionResponse = nil;
 		self.connectionIsTrusted = NO;
-
-		UIAlertView *loginFailureAlertView = [[UIAlertView alloc] initWithTitle:NSLocalizedString(@"Login failure", @"Alert view title: Title for failed SSO login due to authentication issue")
-																		message:[error localizedDescription]
-																	   delegate:nil
-															  cancelButtonTitle:NSLocalizedString(@"OK", @"Button title: Dismiss the alert view")
-															  otherButtonTitles:nil];
-		[loginFailureAlertView show];
+        
+        UIAlertController *loginFailureAlertController =
+        [UIAlertController alertControllerWithTitle:NSLocalizedString(@"Login failure", @"Alert view title: Title for failed SSO login due to authentication issue")
+                                            message:[error localizedDescription]
+                                     preferredStyle:UIAlertControllerStyleAlert];
+        
+        UIAlertAction *loginFailureAlertControllerCancelAction =
+        [UIAlertAction actionWithTitle:NSLocalizedString(@"OK", @"Button title: Dismiss the alert view")
+                                 style:UIAlertActionStyleCancel
+                               handler:nil];
+        [loginFailureAlertController addAction:loginFailureAlertControllerCancelAction];
+        
+        [self presentViewController:loginFailureAlertController animated:YES completion:nil];
 
 		[self.delegate authorizationViewControllerDidFinishLoading:self];
 	}
@@ -441,10 +550,11 @@
 {
 	BOXLog(@"Connection %@ did finish loading. Requesting that the webview load the data (%lu bytes) with reponse %@", connection, (unsigned long)[self.connectionData length], self.connectionResponse);
 	self.connectionIsTrusted = YES;
-	[(UIWebView *)self.view loadData:self.connectionData
-							MIMEType:[self.connectionResponse MIMEType]
-					textEncodingName:[self.connectionResponse textEncodingName]
-							 baseURL:[self.connectionResponse URL]];
+    
+    [self.webView loadData:self.connectionData
+                  MIMEType:[self.connectionResponse MIMEType]
+     characterEncodingName:[self.connectionResponse textEncodingName]
+                   baseURL:[self.connectionResponse URL]];
 
 	self.connection = nil;
 	self.connectionResponse = nil;
@@ -456,14 +566,14 @@
 	return nil;
 }
 
-#pragma mark - UIAlertView delegate methods
+#pragma mark - UIAlertController methods
 
-- (void)alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex
+- (void)alertController:(UIAlertController *)alertController withTag:(NSInteger)tag clickedAction:(UIAlertAction *)action
 {
-	BOXLog(@"Alert view with tag %ld clicked button at index %ld", (long)alertView.tag, (long)buttonIndex);
-	if (alertView.tag == BOX_SSO_CREDENTIALS_ALERT_TAG)
+	BOXLog(@"Alert controller with tag %ld clicked action with style %ld", (long)tag, (long)action.style);
+	if (tag == BOX_SSO_CREDENTIALS_ALERT_TAG)
 	{
-		if (buttonIndex == alertView.cancelButtonIndex)
+		if (action.style == UIAlertActionStyleCancel)
 		{
 			BOXLog(@"Cancel");
 		}
@@ -471,10 +581,10 @@
 		{
 			UITextField *usernameField = nil;
 			UITextField *passwordField = nil;
-			if ([alertView alertViewStyle] == UIAlertViewStyleLoginAndPasswordInput)
+			if (alertController.textFields.count == 2)
 			{
-				usernameField = [alertView textFieldAtIndex:0];
-				passwordField = [alertView textFieldAtIndex:1];
+				usernameField = [alertController.textFields objectAtIndex:0];
+				passwordField = [alertController.textFields objectAtIndex:1];
 			}
 			else
 			{
@@ -489,9 +599,9 @@
 									  forAuthenticationChallenge:self.authenticationChallenge];
 		}
 	}
-	else if (alertView.tag == BOX_SSO_SERVER_TRUST_ALERT_TAG)
+	else if (tag == BOX_SSO_SERVER_TRUST_ALERT_TAG)
 	{
-		BOOL trust = (buttonIndex != alertView.cancelButtonIndex);
+		BOOL trust = (action.style != UIAlertActionStyleCancel);
 		[self completeServerTrustAuthenticationChallenge:self.authenticationChallenge shouldTrust:trust];
 	}
 
