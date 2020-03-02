@@ -8,12 +8,11 @@
 
 #import "BoxAuthorizationViewController.h"
 #import "BoxLog.h"
-#import <WebKit/WebKit.h>
 
 #define BOX_SSO_SERVER_TRUST_ALERT_TAG (1)
 #define BOX_SSO_CREDENTIALS_ALERT_TAG (2)
 
-@interface BoxAuthorizationViewController ()<WKUIDelegate,WKNavigationDelegate>
+@interface BoxAuthorizationViewController ()
 
 @property (nonatomic, readwrite, strong) WKWebView *webView;
 @property (nonatomic, readwrite, strong) NSURL *authorizationURL;
