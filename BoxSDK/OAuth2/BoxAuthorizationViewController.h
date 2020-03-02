@@ -29,7 +29,7 @@
  * @warning This is the only part of the Box SDK that is specific to iOS. If you wish to
  *   include the Box SDK in an OS X project, remove this source file.
  */
-@interface BoxAuthorizationViewController : UIViewController <WKUIDelegate, WKNavigationDelegate, NSURLConnectionDataDelegate>
+@interface BoxAuthorizationViewController : UIViewController 
 
 /** @name Delegate */
 
