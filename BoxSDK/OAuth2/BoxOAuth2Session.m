@@ -68,14 +68,20 @@ NSString *const BoxOAuth2AuthenticationErrorKey = @"BoxOAuth2AuthenticationError
         return;
     }
 
-
-    NSDictionary *POSTParams = @{
-                                 BoxOAuth2TokenRequestGrantTypeKey : BoxOAuth2TokenRequestGrantTypeAuthorizationCode,
-                                 BoxOAuth2TokenRequestAuthorizationCodeKey : authorizationCode,
-                                 BoxOAuth2TokenRequestClientIDKey : self.clientID,
-                                 BoxOAuth2TokenRequestClientSecretKey : self.clientSecret,
-                                 BoxOAuth2TokenRequestRedirectURIKey : self.redirectURIString,
-                                 };
+    NSMutableDictionary *POSTParams = [NSMutableDictionary new];
+    [POSTParams setObject:BoxOAuth2TokenRequestGrantTypeAuthorizationCode forKey:BoxOAuth2TokenRequestGrantTypeKey];
+    if(authorizationCode){
+        [POSTParams setObject:authorizationCode forKey:BoxOAuth2TokenRequestAuthorizationCodeKey];
+    }
+    if(self.clientID){
+        [POSTParams setObject:self.clientID forKey:BoxOAuth2TokenRequestClientIDKey];
+    }
+    if(self.clientSecret){
+        [POSTParams setObject:self.clientSecret forKey:BoxOAuth2TokenRequestClientSecretKey];
+    }
+    if(self.redirectURIString){
+        [POSTParams setObject:self.redirectURIString forKey:BoxOAuth2TokenRequestRedirectURIKey];
+    }
 
     BoxAPIOAuth2ToJSONOperation *operation = [[BoxAPIOAuth2ToJSONOperation alloc] initWithURL:[self grantTokensURL]
                                                                                    HTTPMethod:BoxAPIHTTPMethodPOST
@@ -98,8 +104,11 @@ NSString *const BoxOAuth2AuthenticationErrorKey = @"BoxOAuth2AuthenticationError
 
     operation.failure = ^(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error, NSDictionary *JSONDictionary)
     {
-        NSDictionary *errorInfo = [NSDictionary dictionaryWithObject:error
-                                                              forKey:BoxOAuth2AuthenticationErrorKey];
+        NSDictionary *errorInfo = nil;
+        if(error){
+            errorInfo = [NSDictionary dictionaryWithObject:error
+                                                    forKey:BoxOAuth2AuthenticationErrorKey];
+        }
         [[NSNotificationCenter defaultCenter] postNotificationName:BoxOAuth2SessionDidReceiveAuthenticationErrorNotification
                                                             object:self
                                                           userInfo:errorInfo];
